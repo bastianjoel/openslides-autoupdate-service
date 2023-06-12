@@ -11,6 +11,8 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/pprof"
+	_ "net/http/pprof"
 	"strconv"
 	"strings"
 	"syscall"
@@ -44,6 +46,12 @@ func Run(ctx context.Context, addr string, auth Authenticater, autoupdate *autou
 	HandleShowConnectionCount(mux, autoupdate, auth, connectionCount)
 	HandleHistoryInformation(mux, auth, autoupdate)
 	HandleRestrictFQIDs(mux, autoupdate)
+
+    mux.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
+    mux.Handle("/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
+    mux.Handle("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
+    mux.Handle("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
+    mux.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
 
 	srv := &http.Server{
 		Addr:        addr,
