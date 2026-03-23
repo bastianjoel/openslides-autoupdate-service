@@ -1,0 +1,70 @@
+package collection
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/OpenSlides/openslides-go/datastore/dsfetch"
+)
+
+// PollOption handles permission its collection.
+//
+// A user can see it, if he can see the corresponding poll.
+type PollOption struct{}
+
+// Name returns the collection name.
+func (a PollOption) Name() string {
+	return "poll_option"
+}
+
+// MeetingID returns the meeting of the poll
+func (a PollOption) MeetingID(ctx context.Context, ds *dsfetch.Fetch, id int) (int, bool, error) {
+	pollID, err := a.pollID(ctx, ds, id)
+	if err != nil {
+		return 0, false, fmt.Errorf("getting poll id: %w", err)
+	}
+
+	meetingID, err := ds.Poll_MeetingID(pollID).Value(ctx)
+	if err != nil {
+		return 0, false, fmt.Errorf("getting meeting id: %w", err)
+	}
+	return meetingID, true, nil
+}
+
+// Modes returns the restrictions modes for the action_worker collection.
+func (a PollOption) Modes(mode string) FieldRestricter {
+	switch mode {
+	case "A":
+		return a.see
+	}
+	return nil
+}
+
+func (a PollOption) see(ctx context.Context, ds *dsfetch.Fetch, pollConfigApprovalIDs ...int) ([]int, error) {
+	return eachCondition(pollConfigApprovalIDs, func(pollConfigApprovalID int) (bool, error) {
+		pollID, err := a.pollID(ctx, ds, pollConfigApprovalID)
+		if err != nil {
+			return false, fmt.Errorf("getting poll id: %w", err)
+		}
+
+		allowed, err := Collection(ctx, Poll{}.Name()).Modes("A")(ctx, ds, pollID)
+		if err != nil {
+			return false, fmt.Errorf("check permission of poll: %w", err)
+		}
+
+		if len(allowed) > 0 {
+			return true, nil
+		}
+
+		return false, nil
+	})
+}
+
+func (a PollOption) pollID(ctx context.Context, ds *dsfetch.Fetch, pollConfigOptionID int) (int, error) {
+	pollID, err := ds.PollOption_PollID(pollConfigOptionID).Value(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("getting poll id: %w", err)
+	}
+
+	return pollID, nil
+}
