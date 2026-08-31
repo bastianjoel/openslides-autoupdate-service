@@ -91,14 +91,19 @@ func (b PollBallotUser) see(ctx context.Context, ds *dsfetch.Fetch, ballotUserID
 
 		allowed := make([]int, 0, len(ballotUserIDs))
 		for _, ballotUserID := range ballotUserIDs {
-			representedMeetingUser, err := ds.PollBallotUser_RepresentedMeetingUserID(ballotUserID).Value(ctx)
+			mRepresentedMeetingUser, err := ds.PollBallotUser_RepresentedMeetingUserID(ballotUserID).Value(ctx)
 			if err != nil {
 				return nil, fmt.Errorf("getting represented user: %w", err)
 			}
 
-			representedUser, err := ds.MeetingUser_UserID(representedMeetingUser).Value(ctx)
+			representedMeetingUserID, ok := mRepresentedMeetingUser.Value()
+			if !ok {
+				continue
+			}
+
+			representedUser, err := ds.MeetingUser_UserID(representedMeetingUserID).Value(ctx)
 			if err != nil {
-				return nil, fmt.Errorf("getting represented user: %w", err)
+				return nil, fmt.Errorf("getting user from meeting_user: %w", err)
 			}
 
 			if representedUser == requestUser {
@@ -106,7 +111,7 @@ func (b PollBallotUser) see(ctx context.Context, ds *dsfetch.Fetch, ballotUserID
 				continue
 			}
 
-			delegations, err := ds.MeetingUser_VoteDelegatedToIDs(representedMeetingUser).Value(ctx)
+			delegations, err := ds.MeetingUser_VoteDelegatedToIDs(representedMeetingUserID).Value(ctx)
 			if err != nil {
 				return nil, fmt.Errorf("getting delegation from represented user: %w", err)
 			}

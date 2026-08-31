@@ -505,6 +505,7 @@ var collectionOrder = map[string]int{
 	"poll_config_rating_score":         32,
 	"poll_config_rating_approval":      33,
 	"poll_config_stv_scottish":         34,
+	"poll_entitled_user":               35,
 	"poll_option":                      35,
 	"organization":                     37,
 	"organization_tag":                 38,
