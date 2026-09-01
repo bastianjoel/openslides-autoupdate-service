@@ -1,6 +1,7 @@
 package autoupdate
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/OpenSlides/openslides-autoupdate-service/internal/metric"
@@ -19,15 +20,10 @@ type Flow struct {
 }
 
 // NewFlow initializes a flow for the autoupdate service.
-func NewFlow(lookup environment.Environmenter) (*Flow, error) {
-	err := datastore.WaitPostgresAvailable(lookup)
+func NewFlow(lookup environment.Environmenter) (*Flow, func(context.Context) error, error) {
+	postgres, initPostgres, err := datastore.NewFlowPostgres(lookup)
 	if err != nil {
-		return nil, fmt.Errorf("waiting for postgres: %w", err)
-	}
-
-	postgres, err := datastore.NewFlowPostgres(lookup)
-	if err != nil {
-		return nil, fmt.Errorf("init postgres: %w", err)
+		return nil, nil, fmt.Errorf("init postgres: %w", err)
 	}
 
 	cache := cache.New(postgres)
@@ -40,7 +36,7 @@ func NewFlow(lookup environment.Environmenter) (*Flow, error) {
 
 	metric.Register(flow.metric)
 
-	return &flow, nil
+	return &flow, initPostgres, nil
 }
 
 // ResetCache clears the cache.
